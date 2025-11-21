@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Cycling Fuel, Strength & Recovery Toolkit</title>
+<title>Cycling Day Planner – Fuel, Strength & Recovery</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <style>
@@ -44,12 +44,6 @@
   .pill{display:inline-block;background:#1a2235;border:1px solid var(--border);border-radius:999px;padding:3px 8px;font-size:11px;margin-right:6px}
   .note{font-size:12px;color:var(--muted);margin-top:4px}
   .spacer{height:6px}
-  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
-  .chip{border-radius:999px;border:1px solid var(--border);padding:4px 8px;font-size:12px;background:var(--card2);cursor:pointer}
-  .chip.selected{background:var(--accent);border-color:var(--accent);color:#fff}
-  .tag-ok{color:var(--ok)}
-  .tag-warn{color:var(--warn)}
-  .tag-bad{color:var(--danger)}
   @media (max-width:720px){
     nav{grid-template-columns:repeat(3,1fr)}
     .row.two,.row.three,.row.four{grid-template-columns:1fr}
@@ -59,7 +53,8 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>🚴 Cycling Toolkit</h1>
+    <h1>🚴 Cycling Day Planner</h1>
+    <span class="pill">Day Plan</span>
     <span class="pill">Fuel</span>
     <span class="pill">Macros</span>
     <span class="pill">Rides</span>
@@ -67,16 +62,102 @@
   </header>
 
   <nav id="tabs">
-    <button class="tab-btn active" data-tab="fuel">Fuel</button>
+    <button class="tab-btn active" data-tab="dayplan">Day Plan</button>
+    <button class="tab-btn" data-tab="fuel">Fuel</button>
     <button class="tab-btn" data-tab="macro">Macros</button>
     <button class="tab-btn" data-tab="portions">Portions</button>
-    <button class="tab-btn" data-tab="rides">Rides</button>
     <button class="tab-btn" data-tab="recovery">Recovery</button>
   </nav>
 
+  <!-- Day Plan -->
+  <section id="dayplan" class="tab card">
+    <h2>Today’s Plan (Single Input)</h2>
+    <p class="note">Fill this in once. Fuel, macros and recovery suggestions all pull from this.</p>
+    <div class="row two">
+      <div>
+        <label>Bodyweight (kg)</label>
+        <input id="dp_bw" type="number" step="0.1" inputmode="decimal">
+      </div>
+      <div>
+        <label>Ride duration (hours)</label>
+        <input id="dp_hours" type="number" step="0.1" inputmode="decimal">
+      </div>
+    </div>
+    <div class="row two">
+      <div>
+        <label>Training type</label>
+        <select id="dp_type">
+          <option>Rest / No Ride</option>
+          <option>Recovery Z1–Z2</option>
+          <option>Endurance Z2–Z3</option>
+          <option>Threshold / Sweetspot</option>
+          <option>VO2 / Intervals</option>
+          <option>Race / Hard Group Ride</option>
+        </select>
+      </div>
+      <div>
+        <label>Strength today?</label>
+        <select id="dp_strength">
+          <option value="no">No</option>
+          <option value="yes">Yes</option>
+        </select>
+      </div>
+    </div>
+    <div class="row two">
+      <div>
+        <label>Next hard session in…</label>
+        <select id="dp_nextHard">
+          <option value="gt48">&gt; 48 hours</option>
+          <option value="24to48">24–48 hours</option>
+          <option value="lt24">&lt; 24 hours</option>
+        </select>
+      </div>
+      <div>
+        <label>Heat acclimating?</label>
+        <select id="dp_heat">
+          <option value="no">No</option>
+          <option value="yes">Yes</option>
+        </select>
+      </div>
+    </div>
+    <div class="row two">
+      <div>
+        <label>Current time</label>
+        <select id="dp_time">
+          <option value="am">Morning</option>
+          <option value="pm">Afternoon</option>
+          <option value="eve">Evening / Pre-bed</option>
+        </select>
+      </div>
+      <div></div>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn green" onclick="saveDayPlan()">Save Day Plan &amp; Update</button>
+    <button class="btn alt" onclick="resetDayPlan()">Clear</button>
+
+    <div class="spacer"></div>
+    <div class="row three">
+      <div class="stat">
+        <b>Planned load</b>
+        <span id="dp_summary_type" class="big">—</span>
+        <div class="note" id="dp_summary_note"></div>
+      </div>
+      <div class="stat">
+        <b>Fuel focus</b>
+        <span id="dp_summary_fuel" class="big">—</span>
+      </div>
+      <div class="stat">
+        <b>Recovery focus</b>
+        <span id="dp_summary_rec" class="big">—</span>
+      </div>
+    </div>
+  </section>
+
   <!-- Fuel Timing -->
-  <section id="fuel" class="tab card">
-    <h2>Fuel Timing Calculator</h2>
+  <section id="fuel" class="tab card" style="display:none">
+    <h2>Fuel Timing (auto from Day Plan)</h2>
+    <p class="note">You can override fields, but by default they’re set from your Day Plan.</p>
+
     <div class="row two">
       <div>
         <label>Bodyweight (kg)</label>
@@ -89,7 +170,7 @@
     </div>
     <div class="row three">
       <div>
-        <label>On-bike carb rate (g/hr) <span class="note">(blank = auto)</span></label>
+        <label>On-bike carb rate (g/hr) <span class="note">(blank = from Day Plan)</span></label>
         <input id="ft_rate" type="number" step="1" inputmode="numeric">
       </div>
       <div>
@@ -138,25 +219,18 @@
         <div class="stat"><b>Fluid guide</b><span id="ft_fluid_guide" class="big">—</span> L</div>
         <div class="stat"><b>Sodium guide</b><span id="ft_na_guide" class="big">—</span> mg/L</div>
       </div>
-
-      <h2>Quick Presets</h2>
-      <div class="row four">
-        <button class="btn" onclick="presetFuel('z2_90_cool')">Z2 • 90 min • Cool</button>
-        <button class="btn" onclick="presetFuel('end_2h30_mild')">Endurance • 2.5 h</button>
-        <button class="btn" onclick="presetFuel('end_4h_hot')">Endurance • 4 h • Hot</button>
-        <button class="btn" onclick="presetFuel('race_5h_hot')">Race • 5 h • Hot</button>
-      </div>
     </div>
 
     <div class="spacer"></div>
-    <button class="btn" onclick="calcFuel()">Calculate</button>
-    <button class="btn alt" onclick="resetFuel()">Reset</button>
-    <p class="note">Auto carb rate: &lt;1.5 h → 20 g/h; 1.5–2.5 h → 45 g/h; 2.5–4 h → 75 g/h; ≥4 h → 90 g/h.</p>
+    <button class="btn" onclick="calcFuel()">Recalculate Fuel</button>
+    <button class="btn alt" onclick="resetFuel()">Reset Fuel</button>
   </section>
 
   <!-- Macro Calculator -->
   <section id="macro" class="tab card" style="display:none">
-    <h2>Macro Calculator (per day)</h2>
+    <h2>Macro Calculator (from Day Plan)</h2>
+    <p class="note">Uses Day Plan training type + duration to select day profile. You can still tweak deficit.</p>
+
     <div class="row two">
       <div>
         <label>Bodyweight (kg)</label>
@@ -169,23 +243,15 @@
     </div>
     <div class="row three">
       <div>
-        <label>Day type</label>
-        <select id="mc_day">
-          <option>Mon - Strength+Z2</option>
-          <option>Tue - Z2/3</option>
-          <option>Wed - Strength+Z2</option>
-          <option>Thu - Z2/3</option>
-          <option>Fri - Recovery Z2</option>
-          <option>Sat - Long 3-4h</option>
-          <option>Sun - Endurance 2h</option>
-        </select>
+        <label>Effective day type (auto)</label>
+        <div class="stat"><span id="mc_effday" class="big">—</span></div>
       </div>
       <div>
         <label>Long ride duration (hours)</label>
-        <input id="mc_hours" type="number" step="0.1" inputmode="decimal" value="0">
+        <input id="mc_hours" type="number" step="0.1" inputmode="decimal">
       </div>
       <div>
-        <label><input type="checkbox" id="mc_autoLong" /> Auto “Long 3–4h” when ≥ 2.5 h</label>
+        <label><input type="checkbox" id="mc_autoLong" /> Override with manual long ride &gt;= 2.5 h</label>
       </div>
     </div>
 
@@ -201,22 +267,15 @@
     </div>
     <div class="note" id="mc_effective_note"></div>
 
-    <h2>Day Presets</h2>
-    <div class="row four">
-      <button class="btn" onclick="presetMacro('Fri - Recovery Z2',0,400,false)">Recovery (low)</button>
-      <button class="btn" onclick="presetMacro('Tue - Z2/3',1.5,400,false)">Z2 • 90 min</button>
-      <button class="btn" onclick="presetMacro('Sat - Long 3-4h',3.5,400,true)">Long • 3.5 h</button>
-      <button class="btn" onclick="presetMacro('Sun - Endurance 2h',2,400,false)">Endurance • 2 h</button>
-    </div>
-
     <div class="spacer"></div>
-    <button class="btn" onclick="calcMacro()">Calculate</button>
-    <button class="btn alt" onclick="resetMacro()">Reset</button>
+    <button class="btn" onclick="calcMacro()">Recalculate Macros</button>
+    <button class="btn alt" onclick="resetMacro()">Reset Macros</button>
   </section>
 
   <!-- Portion Lookup -->
   <section id="portions" class="tab card" style="display:none">
-    <h2>Portion Lookup (dry ↔ cooked + carbs)</h2>
+    <h2>Portion Lookup</h2>
+    <p class="note">Use this with off-bike carb target from Macros to build meals.</p>
     <div class="row three">
       <div>
         <label>Search</label>
@@ -247,148 +306,13 @@
         <tbody></tbody>
       </table>
     </div>
-    <p class="note">Dry weights for grains/pasta/oats; as-eaten for bread, wraps, fruit, bars.</p>
-  </section>
-
-  <!-- Ride Log -->
-  <section id="rides" class="tab card" style="display:none">
-    <h2>Ride Log & IF/TSS</h2>
-    <div class="row three">
-      <div>
-        <label>Date</label>
-        <input id="rl_date" type="date">
-      </div>
-      <div>
-        <label>Duration (h)</label>
-        <input id="rl_hours" type="number" step="0.01" inputmode="decimal">
-      </div>
-      <div>
-        <label>Avg Power (W)</label>
-        <input id="rl_avg" type="number" step="1" inputmode="numeric">
-      </div>
-    </div>
-    <div class="row three">
-      <div>
-        <label>FTP (W)</label>
-        <input id="rl_ftp" type="number" step="1" inputmode="numeric">
-      </div>
-      <div>
-        <label>Normalized Power (W)</label>
-        <input id="rl_np" type="number" step="1" inputmode="numeric">
-      </div>
-      <div>
-        <label>CHO Intake (g)</label>
-        <input id="rl_cho" type="number" step="1" inputmode="numeric">
-      </div>
-    </div>
-    <div class="row three">
-      <div>
-        <label>Fluids (L)</label>
-        <input id="rl_fluid" type="number" step="0.1" inputmode="decimal">
-      </div>
-      <div>
-        <label>Notes</label>
-        <input id="rl_notes" maxlength="120">
-      </div>
-      <div>
-        <label>&nbsp;</label>
-        <button class="btn green" onclick="addRide()">Add Ride</button>
-      </div>
-    </div>
-    <div class="row four" style="margin-top:4px">
-      <div class="stat"><b>IF</b><span id="rl_if" class="big">—</span></div>
-      <div class="stat"><b>TSS</b><span id="rl_tss" class="big">—</span></div>
-      <div class="stat"><b>Total Work (kJ)</b><span id="rl_kj" class="big">—</span></div>
-      <div class="stat"><b>kcal (≈kJ)</b><span id="rl_kcal" class="big">—</span></div>
-    </div>
-    <div class="spacer"></div>
-    <button class="btn alt" onclick="calcIF()">Calc IF/TSS</button>
-    <button class="btn warn" onclick="exportCSV()">Export CSV</button>
-    <button class="btn danger" onclick="wipeRides()">Delete All</button>
-    <div class="spacer"></div>
-    <div class="stat">
-      <table id="rl_table">
-        <thead><tr><th>Date</th><th>Hours</th><th>Avg W</th><th>FTP</th><th>NP</th><th>IF</th><th>TSS</th><th>kJ</th><th>CHO (g)</th><th>Fluids (L)</th><th>Notes</th><th></th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
   </section>
 
   <!-- Recovery Decision Helper -->
   <section id="recovery" class="tab card" style="display:none">
-    <h2>Recovery Decision Helper</h2>
-    <p class="note">Answer these and hit “Recommend Recovery” to see what to prioritise today without blunting adaptations.</p>
+    <h2>Recovery Decision Helper (from Day Plan)</h2>
+    <p class="note">Based on today’s training load and timing. You can still manually tweak if needed.</p>
 
-    <div class="row two">
-      <div>
-        <label>Hard session today? (Z3+/VO₂/race/strength)</label>
-        <select id="rec_hard">
-          <option value="no">No</option>
-          <option value="yes">Yes</option>
-        </select>
-      </div>
-      <div>
-        <label>Next hard session in…</label>
-        <select id="rec_next">
-          <option value="gt48">&gt; 48 hours</option>
-          <option value="24to48">24–48 hours</option>
-          <option value="lt24">&lt; 24 hours</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="row two">
-      <div>
-        <label>Did you do strength today?</label>
-        <select id="rec_strength">
-          <option value="no">No</option>
-          <option value="yes">Yes</option>
-        </select>
-      </div>
-      <div>
-        <label>DOMS level</label>
-        <select id="rec_doms">
-          <option value="none">None / mild</option>
-          <option value="mod">Moderate</option>
-          <option value="sev">Severe</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="row two">
-      <div>
-        <label>Long ride (&gt;2.5 h) today?</label>
-        <select id="rec_long">
-          <option value="no">No</option>
-          <option value="yes">Yes</option>
-        </select>
-      </div>
-      <div>
-        <label>Currently heat-acclimating?</label>
-        <select id="rec_heat">
-          <option value="no">No</option>
-          <option value="yes">Yes</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="row two">
-      <div>
-        <label>Time of day now</label>
-        <select id="rec_time">
-          <option value="am">Morning</option>
-          <option value="pm">Afternoon</option>
-          <option value="eve">Evening / pre-bed</option>
-        </select>
-      </div>
-      <div></div>
-    </div>
-
-    <div class="spacer"></div>
-    <button class="btn green" onclick="calcRecovery()">Recommend Recovery</button>
-    <button class="btn alt" onclick="resetRecovery()">Reset</button>
-
-    <div class="spacer"></div>
     <div class="row two">
       <div class="stat">
         <b>Recommended today</b>
@@ -403,6 +327,8 @@
       <b>Rationale</b>
       <p id="rec_reason" class="muted" style="margin:4px 0 0;"></p>
     </div>
+    <div class="spacer"></div>
+    <button class="btn green" onclick="calcRecovery()">Recalculate Recovery</button>
   </section>
 
 </div>
@@ -419,7 +345,134 @@
     });
   });
 
-  // ---------- Fuel Timing ----------
+  // ---------- Global Day Plan ----------
+  let dayPlan = {
+    weightKg: null,
+    rideHours: null,
+    type: "Rest / No Ride",
+    strength: false,
+    nextHard: "gt48",
+    heat: false,
+    timeOfDay: "am"
+  };
+
+  function saveDayPlan(){
+    const bw = parseFloat(val('dp_bw')||'0');
+    const hrs = parseFloat(val('dp_hours')||'0');
+    const type = val('dp_type');
+    const strength = (val('dp_strength') === 'yes');
+    const nextHard = val('dp_nextHard');
+    const heat = (val('dp_heat') === 'yes');
+    const time = val('dp_time');
+
+    dayPlan = { weightKg:bw||null, rideHours:hrs||0, type, strength, nextHard, heat, timeOfDay:time };
+    saveKV('dayPlan', dayPlan);
+
+    updateDayPlanSummary();
+    syncDayPlanToFuel();
+    syncDayPlanToMacro();
+    calcFuel();
+    calcMacro();
+    calcRecovery();
+  }
+
+  function updateDayPlanSummary(){
+    setText('dp_summary_type', dayPlan.type || '—');
+    let fuelFocus = 'Low carb need';
+    let recFocus = 'Light mobility';
+
+    const hrs = dayPlan.rideHours || 0;
+    const hardTypes = ["Threshold / Sweetspot","VO2 / Intervals","Race / Hard Group Ride"];
+    const isHard = hardTypes.includes(dayPlan.type);
+    const isLong = hrs >= 2.5;
+
+    if (isLong && !isHard) fuelFocus = 'Endurance fuel (60–75 g/h)';
+    if (isHard && !isLong) fuelFocus = 'High-intensity fuel (70–90 g/h)';
+    if (isHard && isLong) fuelFocus = 'Race fuel (75–90 g/h)';
+    if (dayPlan.type==="Rest / No Ride") fuelFocus = 'Deficit / low carb base';
+
+    if (isHard || isLong) recFocus = 'Sauna + compression + mobility';
+    if (dayPlan.strength) recFocus = 'Protect strength adapts, avoid ice baths';
+
+    setText('dp_summary_fuel', fuelFocus);
+    setText('dp_summary_rec', recFocus);
+
+    let note = [];
+    if (hrs>0) note.push(`${hrs.toFixed(1)} h planned`);
+    if (dayPlan.strength) note.push("Strength included");
+    if (dayPlan.heat) note.push("Heat acclimation on");
+    const nh = dayPlan.nextHard;
+    if (nh==="gt48") note.push("Next hard >48 h");
+    if (nh==="24to48") note.push("Next hard 24–48 h");
+    if (nh==="lt24") note.push("Next hard <24 h");
+    document.getElementById('dp_summary_note').textContent = note.join(" • ");
+  }
+
+  function resetDayPlan(){
+    dayPlan = {
+      weightKg: null,
+      rideHours: null,
+      type: "Rest / No Ride",
+      strength: false,
+      nextHard: "gt48",
+      heat: false,
+      timeOfDay: "am"
+    };
+    ['dp_bw','dp_hours'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('dp_type').value = "Rest / No Ride";
+    document.getElementById('dp_strength').value = 'no';
+    document.getElementById('dp_nextHard').value = 'gt48';
+    document.getElementById('dp_heat').value = 'no';
+    document.getElementById('dp_time').value = 'am';
+    delK('dayPlan');
+    updateDayPlanSummary();
+    resetFuel();
+    resetMacro();
+    calcRecovery();
+  }
+
+  function syncDayPlanToFuel(){
+    if (dayPlan.weightKg) document.getElementById('ft_bw').value = dayPlan.weightKg;
+    if (isFinite(dayPlan.rideHours)) document.getElementById('ft_hours').value = dayPlan.rideHours;
+  }
+
+  function syncDayPlanToMacro(){
+    if (dayPlan.weightKg) document.getElementById('mc_bw').value = dayPlan.weightKg;
+    if (isFinite(dayPlan.rideHours)) document.getElementById('mc_hours').value = dayPlan.rideHours;
+  }
+
+  function carbRateFromType(type, hours){
+    if (!hours || hours<=0) return 0;
+    switch(type){
+      case "Rest / No Ride":     return 0;
+      case "Recovery Z1–Z2":    return (hours<1.5?20:30);
+      case "Endurance Z2–Z3":   return (hours<3?60:70);
+      case "Threshold / Sweetspot": return 70;
+      case "VO2 / Intervals":   return 80;
+      case "Race / Hard Group Ride": return 85;
+      default: return 0;
+    }
+  }
+
+  function preRideFromType(bw, type, hours){
+    if (!bw) return 0;
+    switch(type){
+      case "Rest / No Ride":
+        return Math.round(bw*0.5);
+      case "Recovery Z1–Z2":
+        return Math.round(bw*1.0);
+      case "Endurance Z2–Z3":
+        return Math.round(bw*1.5);
+      case "Threshold / Sweetspot":
+      case "VO2 / Intervals":
+      case "Race / Hard Group Ride":
+        return Math.round(bw*2.0);
+      default:
+        return Math.round(bw*1.2);
+    }
+  }
+
+  // ---------- Fuel ----------
   function autoRate(hours){
     if (!isFinite(hours)||hours<=0) return 0;
     if (hours < 1.5) return 20;
@@ -436,8 +489,8 @@
     return [+(perH_low*hours).toFixed(1), +(perH_high*hours).toFixed(1)];
   }
   function calcFuel(){
-    const bw   = parseFloat(val('ft_bw')||'0');
-    const hrs  = parseFloat(val('ft_hours')||'0');
+    let bw   = parseFloat(val('ft_bw')||'0');
+    let hrs  = parseFloat(val('ft_hours')||'0');
     const rateManual = val('ft_rate').trim();
     const temp = parseFloat(val('ft_temp'));
     const litres = parseFloat(val('ft_litres')||'0');
@@ -445,14 +498,20 @@
     const sweat = parseFloat(val('ft_sweat_mgL'));
     const hot = document.getElementById('ft_hot').checked;
 
-    const rateAuto = autoRate(hrs);
-    setText('ft_auto', rateAuto?rateAuto:'—');
-    const rate = rateManual!=='' && isFinite(parseFloat(rateManual)) ? parseFloat(rateManual) : rateAuto;
+    if ((!bw || bw<=0) && dayPlan.weightKg) bw = dayPlan.weightKg;
+    if ((!hrs || hrs<=0) && isFinite(dayPlan.rideHours)) hrs = dayPlan.rideHours || 0;
 
-    const pre  = Math.round(bw*1.5);
-    const post = Math.round(bw*1.2);
-    const prot = Math.round(bw*0.4);
-    const onbk = Math.round(hrs*rate);
+    // Rate from type first, fallback to generic autoRate
+    let rateFromType = carbRateFromType(dayPlan.type, hrs);
+    let rateAutoCore = rateFromType || autoRate(hrs);
+    setText('ft_auto', rateAutoCore?rateAutoCore:'—');
+
+    const rate = rateManual!=='' && isFinite(parseFloat(rateManual)) ? parseFloat(rateManual) : rateAutoCore;
+
+    const pre  = preRideFromType(bw, dayPlan.type, hrs);
+    const post = Math.round(bw*1.2 || 0);
+    const prot = Math.round(bw*0.4 || 0);
+    const onbk = Math.round(hrs*rate || 0);
 
     setText('ft_pre', pre||'—');
     setText('ft_post', post||'—');
@@ -466,7 +525,6 @@
     let fLow = fLow0, fHigh = fHigh0;
     let naGuide = '500–1000';
     if (isFinite(sweat) && sweat>0) naGuide = `${Math.max(300, sweat-200)}–${sweat+200}`;
-
     if (hot) {
       const add = (isFinite(hrs) ? +(0.2*hrs).toFixed(1) : 0);
       fLow = fLow0 ? +(fLow0 + add).toFixed(1) : fLow0;
@@ -474,11 +532,13 @@
       const parts = naGuide.split('–').map(x => parseInt(x, 10));
       if (parts.length===2 && parts.every(n=>!isNaN(n))) {
         naGuide = `${parts[0]+200}–${parts[1]+200}`;
-        }
+      }
     }
-
     setText('ft_fluid_guide', (fLow&&fHigh)?`${fLow}–${fHigh}`:'—');
     setText('ft_na_guide', naGuide);
+
+    document.getElementById('ft_bw').value = bw || '';
+    document.getElementById('ft_hours').value = hrs || '';
 
     saveKV('ft_bw',bw); saveKV('ft_hours',hrs); saveKV('ft_rate',rateManual);
     saveKV('ft_temp', val('ft_temp')); saveKV('ft_litres', val('ft_litres')); saveKV('ft_na_mgL', val('ft_na_mgL')); saveKV('ft_sweat_mgL', val('ft_sweat_mgL'));
@@ -490,54 +550,50 @@
     ['ft_auto','ft_pre','ft_post','ft_prot','ft_onbike','ft_na_total','ft_fluid_guide','ft_na_guide'].forEach(id=>setText(id,'—'));
     ['ft_bw','ft_hours','ft_rate','ft_temp','ft_litres','ft_na_mgL','ft_sweat_mgL','ft_hot'].forEach(k=>delK(k));
   }
-  function presetFuel(key){
-    const bw = parseFloat(document.getElementById('ft_bw').value || '0') || 78;
-    let hrs=0, temp=12, rate='', litres='', mgL=800, sweat=900, hot=false;
-    if (key==='z2_90_cool'){ hrs=1.5; temp=10; rate=''; litres=0.9; mgL=700; sweat=800; hot=false; }
-    if (key==='end_2h30_mild'){ hrs=2.5; temp=18; rate=''; litres=1.7; mgL=800; sweat=900; hot=false; }
-    if (key==='end_4h_hot'){ hrs=4.0; temp=25; rate=''; litres=3.4; mgL=900; sweat=1000; hot=true; }
-    if (key==='race_5h_hot'){ hrs=5.0; temp=27; rate=90; litres=4.0; mgL=1000; sweat=1100; hot=true; }
 
-    document.getElementById('ft_bw').value = bw;
-    document.getElementById('ft_hours').value = hrs;
-    document.getElementById('ft_rate').value = rate;
-    document.getElementById('ft_temp').value = temp;
-    document.getElementById('ft_litres').value = litres;
-    document.getElementById('ft_na_mgL').value = mgL;
-    document.getElementById('ft_sweat_mgL').value = sweat;
-    document.getElementById('ft_hot').checked = hot;
-    calcFuel();
-  }
-
-  // ---------- Macro Calculator ----------
+  // ---------- Macros ----------
   const DAY_LOOKUP = {
-    "Mon - Strength+Z2": {kcal:2400, carbs:300, fat:75},
-    "Tue - Z2/3": {kcal:2000, carbs:200, fat:70},
-    "Wed - Strength+Z2": {kcal:2400, carbs:300, fat:75},
-    "Thu - Z2/3": {kcal:2000, carbs:200, fat:70},
-    "Fri - Recovery Z2": {kcal:1900, carbs:180, fat:65},
-    "Sat - Long 3-4h": {kcal:2700, carbs:400, fat:85},
-    "Sun - Endurance 2h": {kcal:2500, carbs:350, fat:80}
+    "Recovery": {kcal:1900, carbs:180, fat:65},
+    "Moderate": {kcal:2000, carbs:220, fat:70},
+    "Endurance": {kcal:2500, carbs:350, fat:80},
+    "Long": {kcal:2700, carbs:400, fat:85},
+    "Hard": {kcal:2400, carbs:300, fat:75}
   };
-  function effectiveDay(day, hours, autoLong){
-    if (autoLong && isFinite(hours) && hours>=2.5) return "Sat - Long 3-4h";
-    return day;
+
+  function macroProfileFromPlan(plan){
+    const hrs = plan.rideHours || 0;
+    const t = plan.type;
+    if (t==="Rest / No Ride") return "Recovery";
+    if (t==="Recovery Z1–Z2") return "Recovery";
+    if (t==="Endurance Z2–Z3") return (hrs>=3 ? "Long" : "Endurance");
+    if (t==="Threshold / Sweetspot" || t==="VO2 / Intervals") return "Hard";
+    if (t==="Race / Hard Group Ride") return (hrs>=3 ? "Long" : "Hard");
+    return "Recovery";
   }
+
   function calcMacro(){
-    const bw  = parseFloat(val('mc_bw')||'0');
+    let bw  = parseFloat(val('mc_bw')||'0');
     const def = parseFloat(val('mc_def')||'0');
-    const day = val('mc_day');
-    const hrs = parseFloat(val('mc_hours')||'0');
+    let hrs = parseFloat(val('mc_hours')||'0');
     const autoL = document.getElementById('mc_autoLong').checked;
 
-    const eff = effectiveDay(day, hrs, autoL);
-    const base = DAY_LOOKUP[eff]?.kcal || 0;
-    const fatG = DAY_LOOKUP[eff]?.fat || 0;
+    if ((!bw || bw<=0) && dayPlan.weightKg) bw = dayPlan.weightKg;
+    if ((!hrs || hrs<=0) && isFinite(dayPlan.rideHours)) hrs = dayPlan.rideHours || 0;
+
+    let profName = macroProfileFromPlan(dayPlan);
+    if (autoL && hrs>=2.5) profName = "Long";
+
+    const prof = DAY_LOOKUP[profName] || DAY_LOOKUP["Recovery"];
+    setText('mc_effday', profName);
+
+    const base = prof.kcal;
+    const fatG = prof.fat;
     const proG = Math.round(bw*1.9);
 
     let onbike = 0;
-    if (eff==="Sat - Long 3-4h") onbike = Math.round(hrs*70);
-    else if (eff==="Sun - Endurance 2h") onbike = Math.round(hrs*50);
+    if (profName==="Long") onbike = Math.round(hrs*70);
+    else if (profName==="Endurance") onbike = Math.round(hrs*50);
+    else if (profName==="Hard") onbike = Math.round(hrs*60);
 
     const targetKcal = Math.max(1700, base - def) + (onbike*4);
     const totalCarb = Math.round((targetKcal - (proG*4) - (fatG*9))/4);
@@ -549,24 +605,20 @@
     setText('mc_target', Math.round(targetKcal));
     setText('mc_carb', totalCarb);
     setText('mc_off', offBike);
-    document.getElementById('mc_effective_note').textContent = (eff!==day) ? `Effective day type: ${eff} (auto-long active)` : `Effective day type: ${eff}`;
+    document.getElementById('mc_effective_note').textContent = `Macro profile from Day Plan: ${profName}`;
 
-    saveKV('mc_bw',val('mc_bw')); saveKV('mc_def',val('mc_def')); saveKV('mc_day',day); saveKV('mc_hours',val('mc_hours')); saveKV('mc_autoLong', autoL);
+    document.getElementById('mc_bw').value = bw || '';
+    document.getElementById('mc_hours').value = hrs || '';
+    saveKV('mc_bw',bw); saveKV('mc_def',val('mc_def')); saveKV('mc_hours',hrs); saveKV('mc_autoLong', autoL);
   }
+
   function resetMacro(){
     ['mc_bw','mc_def','mc_hours'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('mc_day').selectedIndex=0;
+    document.getElementById('mc_def').value = 400;
     document.getElementById('mc_autoLong').checked=false;
-    ['mc_pro','mc_base','mc_onbike','mc_target','mc_carb','mc_off'].forEach(id=>setText(id,'—'));
+    ['mc_pro','mc_base','mc_onbike','mc_target','mc_carb','mc_off','mc_effday'].forEach(id=>setText(id,'—'));
     document.getElementById('mc_effective_note').textContent='';
-    ['mc_bw','mc_def','mc_day','mc_hours','mc_autoLong'].forEach(k=>delK(k));
-  }
-  function presetMacro(dayType, hours, deficit, autoLong){
-    document.getElementById('mc_day').value = dayType;
-    document.getElementById('mc_hours').value = hours;
-    document.getElementById('mc_def').value = deficit;
-    document.getElementById('mc_autoLong').checked = !!autoLong;
-    calcMacro();
+    ['mc_bw','mc_def','mc_hours','mc_autoLong'].forEach(k=>delK(k));
   }
 
   // ---------- Portions ----------
@@ -617,82 +669,15 @@
     });
   }
 
-  // ---------- Ride Log ----------
-  function calcIF(){
-    const ftp = parseFloat(val('rl_ftp')||'0');
-    const np  = parseFloat(val('rl_np')||'0');
-    const hrs = parseFloat(val('rl_hours')||'0');
-    const avg = parseFloat(val('rl_avg')||'0');
-
-    const IF = (ftp>0 && np>0) ? (np/ftp) : 0;
-    const TSS = (hrs>0) ? (hrs * IF * IF * 100) : 0;
-    const kJ = (hrs>0 && avg>0) ? Math.round(avg * hrs * 3600 / 1000) : 0;
-
-    setText('rl_if', IF ? IF.toFixed(2) : '—');
-    setText('rl_tss', TSS ? Math.round(TSS) : '—');
-    setText('rl_kj', kJ || '—');
-    setText('rl_kcal', kJ || '—');
-
-    return {IF, TSS, kJ};
-  }
-  function getRides(){ try{ return JSON.parse(localStorage.getItem('rides')||'[]'); }catch(e){ return [] } }
-  function setRides(arr){ localStorage.setItem('rides', JSON.stringify(arr)); }
-  function addRide(){
-    const metrics = calcIF();
-    const obj = {
-      date: val('rl_date'),
-      hours: parseFloat(val('rl_hours')||'0'),
-      avg: parseFloat(val('rl_avg')||'0'),
-      ftp: parseFloat(val('rl_ftp')||'0'),
-      np:  parseFloat(val('rl_np')||'0'),
-      IF: +metrics.IF.toFixed(2) || '',
-      TSS: Math.round(metrics.TSS) || '',
-      kJ: metrics.kJ || '',
-      cho: parseFloat(val('rl_cho')||'0'),
-      fluid: parseFloat(val('rl_fluid')||'0'),
-      notes: val('rl_notes')||''
-    };
-    if(!obj.date){ alert('Please set a date'); return; }
-    const rides = getRides(); rides.push(obj); setRides(rides); renderRides(); clearRideForm();
-  }
-  function clearRideForm(){ ['rl_date','rl_hours','rl_avg','rl_ftp','rl_np','rl_cho','rl_fluid','rl_notes'].forEach(id=>document.getElementById(id).value=''); ['rl_if','rl_tss','rl_kj','rl_kcal'].forEach(id=>setText(id,'—')); }
-  function renderRides(){
-    const tb = document.querySelector('#rl_table tbody'); tb.innerHTML='';
-    getRides().forEach((r,i)=>{
-      const tr=document.createElement('tr');
-      ['date','hours','avg','ftp','np','IF','TSS','kJ','cho','fluid','notes'].forEach(k=>{
-        const td=document.createElement('td'); td.textContent = (r[k]!==undefined?r[k]:''); tr.appendChild(td);
-      });
-      const td=document.createElement('td');
-      const del=document.createElement('button'); del.className='btn danger'; del.textContent='X';
-      del.onclick=()=>{ const arr=getRides(); arr.splice(i,1); setRides(arr); renderRides(); };
-      td.appendChild(del); tr.appendChild(td);
-      tb.appendChild(tr);
-    });
-  }
-  function exportCSV(){
-    const rides = getRides();
-    if(!rides.length){ alert('No rides to export'); return; }
-    const headers = ['date','hours','avg_power','ftp','np','IF','TSS','kJ','carbs_g','fluids_l','notes'];
-    const lines = [headers.join(',')].concat(
-      rides.map(r=>[r.date,r.hours,r.avg,r.ftp,r.np,r.IF,r.TSS,r.kJ,r.cho,r.fluid,('"'+(r.notes||'').replace(/"/g,'""')+'"')].join(','))
-    );
-    const blob = new Blob([lines.join('\n')], {type:'text/csv'});
-    const url = URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=url; a.download='ride-log.csv'; a.click();
-    URL.revokeObjectURL(url);
-  }
-  function wipeRides(){ if(confirm('Delete ALL rides?')){ localStorage.removeItem('rides'); renderRides(); } }
-
-  // ---------- Recovery Decision Helper ----------
+  // ---------- Recovery ----------
   function calcRecovery(){
-    const hard = val('rec_hard');
-    const next = val('rec_next');
-    const strength = val('rec_strength');
-    const doms = val('rec_doms');
-    const longR = val('rec_long');
-    const heat = val('rec_heat');
-    const time = val('rec_time');
+    const hardTypes = ["Threshold / Sweetspot","VO2 / Intervals","Race / Hard Group Ride"];
+    const isHard = hardTypes.includes(dayPlan.type);
+    const isLong = (dayPlan.rideHours || 0) >= 2.5;
+    const strength = dayPlan.strength;
+    const heat = dayPlan.heat;
+    const next = dayPlan.nextHard;
+    const time = dayPlan.timeOfDay;
 
     const rec = [];
     const avoid = [];
@@ -703,69 +688,53 @@
     rec.push("Legs elevated 10–15 min");
     rec.push("Compression garments 1–2 h if available");
 
-    // Hard session logic
-    if (hard === 'yes') {
+    if (isHard){
       if (next === 'gt48') {
         rec.push("Traditional sauna 15–20 min (2–4×/week)");
         rec.push("Light yoga / breathing in evening");
         avoid.push("Ice bath / cold plunge (no need, reduces adaptation)");
-        reason.push("Next hard session is >48 h away → focus on maximising training signal, not blunting it.");
+        reason.push("Hard session today, next hard >48 h → maximise training signal.");
       } else if (next === '24to48') {
-        rec.push("Traditional sauna or contrast shower (short)");
+        rec.push("Traditional sauna or short contrast shower");
         rec.push("Short Z1 spin 15–20 min next day");
-        avoid.push("Ice bath after training (saves adaptation, still recovers fine)");
-        reason.push("Next hard session in 24–48 h → you want recovery but still good adaptation.");
-      } else { // <24h
+        avoid.push("Ice bath right after training");
+        reason.push("Hard session today, next hard 24–48 h → balanced recovery + adaptation.");
+      } else {
         rec.push("Contrast shower 5–7 cycles (hot/cold)");
         rec.push("Massage gun 5–8 min per leg");
-        rec.push("Optional compression boots if you have them");
+        rec.push("Optional compression boots if available");
         avoid.push("Long sauna (>15 min)");
-        avoid.push("Any very heavy work tonight");
-        reason.push("Next hard session <24 h → prioritise short-term recovery even at small adaptation cost.");
+        reason.push("Hard session today, next hard <24 h → prioritise short-term recovery.");
       }
     } else {
-      reason.push("No hard session today → light active recovery and mobility are enough.");
+      reason.push("No high-intensity session today → light recovery is sufficient.");
     }
 
-    // Strength-specific rules
-    if (strength === 'yes') {
+    if (strength){
       avoid.push("Ice bath or cold plunge after strength");
-      avoid.push("Heavy static stretching immediately after lifting");
-      reason.push("Strength today → avoid things that blunt hypertrophy and neural adaptation.");
+      avoid.push("Deep static stretching immediately post-lift");
       rec.push("Short hip/ankle-focused mobility");
+      reason.push("Strength today → avoid blunting hypertrophy and neural adaptation.");
     }
 
-    // DOMS
-    if (doms === 'mod' || doms === 'sev') {
-      rec.push("Sauna 10–20 min or warm shower");
-      rec.push("Massage gun on sore areas (light)");
-      rec.push("Easy Z1 spin 15–20 min if legs feel heavy");
-      reason.push("Moderate/severe DOMS → increase blood flow and warmth, no extreme stretching.");
-      avoid.push("Very deep static stretching of sore muscles");
-    }
-
-    // Long ride
-    if (longR === 'yes') {
-      rec.push("Compression garments for 2 h after ride");
+    if (isLong){
+      rec.push("Compression garments for 2 h post-ride");
       rec.push("Easy 10–15 min spin or walk next morning");
-      reason.push("Long ride today → focus on blood flow and gentle movement.");
+      reason.push("Long ride today → prioritise blood flow and gentle movement.");
     }
 
-    // Heat acclimation
-    if (heat === 'yes') {
-      rec.push("Sauna 15–20 min (if not done earlier today)");
-      avoid.push("Cold plunge directly after heat sessions");
-      reason.push("You’re heat-acclimating → prioritise heat exposure and avoid cancelling it with cold.");
+    if (heat){
+      rec.push("Sauna 15–20 min if not already done");
+      avoid.push("Cold plunge directly after heat exposure");
+      reason.push("Heat-acclimating → keep heat stress signal, avoid cancelling with cold.");
     }
 
-    // Time-of-day tweaks
-    if (time === 'eve') {
+    if (time === 'eve'){
       rec.push("Calm breathing / light stretching before bed");
-      avoid.push("Strong cold exposure close to bedtime");
-      reason.push("Evening now → avoid big sympathetic spikes that harm sleep.");
+      avoid.push("Strong cold exposure near bedtime");
+      reason.push("Evening → protect sleep quality and parasympathetic state.");
     }
 
-    // Deduplicate
     function unique(arr){ return [...new Set(arr)]; }
     const recU = unique(rec);
     const avoidU = unique(avoid);
@@ -792,18 +761,6 @@
     document.getElementById('rec_reason').textContent = reasonText || "Standard low-intensity recovery is sufficient today.";
   }
 
-  function resetRecovery(){
-    ['rec_hard','rec_next','rec_strength','rec_doms','rec_long','rec_heat','rec_time'].forEach(id=>{
-      const el=document.getElementById(id);
-      if (id==='rec_next') el.value='gt48';
-      else if (id==='rec_time') el.value='am';
-      else el.value='no';
-    });
-    document.getElementById('rec_recommend').innerHTML='';
-    document.getElementById('rec_avoid').innerHTML='';
-    document.getElementById('rec_reason').textContent='';
-  }
-
   // ---------- Helpers & Init ----------
   function setText(id, v){ document.getElementById(id).textContent = (v===0?0:(v||'—')); }
   function val(id){ return document.getElementById(id).value; }
@@ -811,29 +768,50 @@
   function delK(k){ localStorage.removeItem(k); }
   function loadKV(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
 
+  function initDayPlan(){
+    const stored = loadKV('dayPlan');
+    if (stored && typeof stored === 'object'){
+      dayPlan = Object.assign({
+        weightKg:null, rideHours:null, type:"Rest / No Ride",
+        strength:false, nextHard:"gt48", heat:false, timeOfDay:"am"
+      }, stored);
+      if (dayPlan.weightKg) document.getElementById('dp_bw').value = dayPlan.weightKg;
+      if (isFinite(dayPlan.rideHours)) document.getElementById('dp_hours').value = dayPlan.rideHours;
+      document.getElementById('dp_type').value = dayPlan.type;
+      document.getElementById('dp_strength').value = dayPlan.strength?'yes':'no';
+      document.getElementById('dp_nextHard').value = dayPlan.nextHard;
+      document.getElementById('dp_heat').value = dayPlan.heat?'yes':'no';
+      document.getElementById('dp_time').value = dayPlan.timeOfDay;
+    }
+    updateDayPlanSummary();
+  }
+
   function initFuel(){
     ['ft_bw','ft_hours','ft_rate','ft_temp','ft_litres','ft_na_mgL','ft_sweat_mgL'].forEach(id=>{
       const v=loadKV(id); if(v!==null) document.getElementById(id).value=v;
     });
     const hotSaved = loadKV('ft_hot'); if (hotSaved!==null) document.getElementById('ft_hot').checked = hotSaved;
+    syncDayPlanToFuel();
     calcFuel();
   }
+
   function initMacro(){
     const v1=loadKV('mc_bw'); if(v1!==null) document.getElementById('mc_bw').value=v1;
     const v2=loadKV('mc_def'); if(v2!==null) document.getElementById('mc_def').value=v2;
-    const v3=loadKV('mc_day'); if(v3!==null) document.getElementById('mc_day').value=v3;
     const v4=loadKV('mc_hours'); if(v4!==null) document.getElementById('mc_hours').value=v4;
     const v5=loadKV('mc_autoLong'); if(v5!==null) document.getElementById('mc_autoLong').checked=v5;
+    syncDayPlanToMacro();
     calcMacro();
   }
 
   window.addEventListener('load', ()=>{
+    initDayPlan();
     initFuel();
     initMacro();
     renderPortions();
-    renderRides();
-    resetRecovery();
+    calcRecovery();
   });
 </script>
 </body>
 </html>
+
